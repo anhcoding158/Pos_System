@@ -24,8 +24,10 @@ def get_machine_id():
 
 
 def base64_decode(b64_string: str) -> str:
-    """Thuật toán giải mã Base64 bù trừ padding (Đã sửa số 8 thành số 4 chuẩn 100%)"""
-    padding = '=' * (4 - (len(b64_string) % 4)) % 4
+    """Thuật toán giải mã Base64 bù trừ padding chuẩn xác"""
+    # Đã sửa lại ngoặc để toán tử % tính toán đúng trên con số
+    padding_length = (4 - (len(b64_string) % 4)) % 4
+    padding = '=' * padding_length
     return base64.urlsafe_b64decode(b64_string + padding).decode('utf-8')
 
 

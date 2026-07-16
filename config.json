@@ -10,7 +10,8 @@
     },
     "security": {
         "mac_address": "",
-        "is_activated": false
+        "is_activated": true,
+        "license_key": "AL-eyJtIjoiRUZCRTE4NzlDQTc1IiwiZSI6IjIwMjYtMDgtMTUiLCJwIjoiRU5URVJQUklTRSIsImciOiIyMDI2MDcxNiJ9-C036A6AAFB0F1AE6"
     },
     "payment": {
         "qr_code": "",
@@ -18,6 +19,6 @@
     },
     "auth": {
         "saved_user": "nv01",
-        "saved_pwd": "MTIzNDU2"
+        "saved_pwd": "MTIz"
     }
 }
