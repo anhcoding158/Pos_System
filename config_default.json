@@ -1,0 +1,24 @@
+{
+    "store_info": {
+        "name": "TÊN CỬA HÀNG",
+        "address": "Địa chỉ cửa hàng",
+        "phone": "Số điện thoại"
+    },
+    "hardware": {
+        "printer_name": "Microsoft Print to PDF",
+        "paper_size": "K80"
+    },
+    "security": {
+        "mac_address": "",
+        "is_activated": false,
+        "license_key": ""
+    },
+    "payment": {
+        "qr_code": "",
+        "secure_qr_code": ""
+    },
+    "auth": {
+        "saved_user": "",
+        "saved_pwd": ""
+    }
+}

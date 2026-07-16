@@ -2,13 +2,11 @@ pipeline {
     agent any
     environment {
         APP_NAME = "POS_Enterprise"
-        // Version tự động tăng theo lượt build của Jenkins
         APP_VERSION = "2.0.${env.BUILD_NUMBER}"
     }
     stages {
         stage('Checkout Code') {
             steps {
-                // Jenkins tự động tải code mới nhất từ Github về
                 checkout scm
             }
         }
@@ -16,7 +14,7 @@ pipeline {
             steps {
                 bat '''
                 echo =========================================
-                echo CÀI ĐẶT THƯ VIỆN PYTHON (DEPENDENCIES)
+                echo CÀI ĐẶT THƯ VIỆN PYTHON
                 echo =========================================
                 python -m pip install --upgrade pip
                 pip install -r requirements.txt
@@ -24,17 +22,18 @@ pipeline {
                 '''
             }
         }
-        stage('Đóng gói (Build EXE)') {
+        stage('Đóng gói (Build 1 FILE EXE)') {
             steps {
                 bat '''
                 echo =========================================
-                echo TIẾN HÀNH BUILD FILE EXE
+                echo TIẾN HÀNH BUILD 1 FILE EXE DUY NHẤT
                 echo =========================================
                 if exist build rmdir /S /Q build
                 if exist dist rmdir /S /Q dist
 
-                :: Build ra thư mục (onedir) để phần mềm chạy ổn định nhất, ẩn cửa sổ đen (noconsole)
-                pyinstaller --noconsole --onedir --windowed --icon=icon.ico --name %APP_NAME% main.py
+                :: --onefile: Chỉ sinh ra 1 file exe duy nhất
+                :: --add-data "icon.ico;.": Ép file icon chui vào bên trong file exe
+                pyinstaller --noconsole --onefile --windowed --icon=icon.ico --add-data "icon.ico;." --name %APP_NAME% main.py
                 '''
             }
         }
@@ -42,10 +41,20 @@ pipeline {
             steps {
                 bat '''
                 echo =========================================
-                echo NÉN THÀNH PHẨM ĐỂ GIAO CHO KHÁCH HÀNG
+                echo ĐÓNG GÓI SẢN PHẨM SẠCH GIAO KHÁCH HÀNG
                 echo =========================================
-                :: Dùng Powershell của Windows để nén thư mục dist/POS_Enterprise thành file ZIP
-                powershell Compress-Archive -Path dist\\%APP_NAME% -DestinationPath %APP_NAME%_v%APP_VERSION%.zip -Force
+                :: 1. Tạo một thư mục Release gọn gàng
+                if exist Release_Build rmdir /S /Q Release_Build
+                mkdir Release_Build
+
+                :: 2. Copy 1 file EXE duy nhất vào thư mục Release
+                copy dist\\%APP_NAME%.exe Release_Build\\
+
+                :: 3. ĐỔI TÊN file config_default thành config.json (BẢN SẠCH CỦA KHÁCH)
+                copy config_default.json Release_Build\\config.json
+
+                :: 4. Nén 2 file đó lại thành file ZIP mang đi bán
+                powershell Compress-Archive -Path Release_Build\\* -DestinationPath %APP_NAME%_v%APP_VERSION%.zip -Force
                 '''
             }
         }
@@ -53,11 +62,9 @@ pipeline {
     post {
         success {
             echo "🎉 CHÚC MỪNG: BUILD THÀNH CÔNG PHIÊN BẢN ${env.APP_VERSION}!"
-            // Đẩy file ZIP lên giao diện Jenkins để sếp tải về
             archiveArtifacts artifacts: '*.zip', fingerprint: true
         }
         cleanup {
-            // FIX LỖI: Dùng 'cleanup' thay vì 'always' để dọn rác sau khi đã lưu file ZIP xong
             cleanWs()
         }
     }

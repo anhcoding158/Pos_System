@@ -6,3 +6,4 @@ dist/
 *.spec
 pos_enterprise_v2.db
 .idea/
+config.json

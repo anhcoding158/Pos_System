@@ -5,6 +5,8 @@ import hashlib
 import hmac
 import json
 import base64
+import os
+import sys
 from datetime import datetime
 
 from views.login_view import LoginWindow
@@ -23,9 +25,19 @@ def get_machine_id():
     return hashlib.md5(str(mac).encode('utf-8')).hexdigest()[:12].upper()
 
 
+def resource_path(relative_path):
+    """SIÊU THUẬT TOÁN TÌM FILE (ICON/HÌNH ẢNH) KHI BUILD 1 FILE EXE"""
+    try:
+        # PyInstaller tạo ra thư mục tạm ngầm _MEIPASS khi build --onefile
+        base_path = sys._MEIPASS
+    except Exception:
+        # Chạy code bình thường trên PyCharm
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+
 def base64_decode(b64_string: str) -> str:
     """Thuật toán giải mã Base64 bù trừ padding chuẩn xác"""
-    # Đã sửa lại ngoặc để toán tử % tính toán đúng trên con số
     padding_length = (4 - (len(b64_string) % 4)) % 4
     padding = '=' * padding_length
     return base64.urlsafe_b64decode(b64_string + padding).decode('utf-8')
@@ -35,10 +47,11 @@ def verify_pro_license(machine_id, license_key):
     try:
         clean_key = str(license_key).strip().replace("\n", "").replace("\r", "")
 
-        if not clean_key or not clean_key.startswith("AL-"):
-            return False, "Key không hợp lệ! Vui lòng kiểm tra lại."
+        # TỰ ĐỘNG BỎ "AL-" NẾU KHÁCH CÓ COPY VÀO (HOẶC BỎ QUA NẾU KHÁCH QUÊN)
+        if clean_key.startswith("AL-"):
+            clean_key = clean_key[3:]
 
-        parts = clean_key[3:].split('-')
+        parts = clean_key.split('-')
         if len(parts) != 2:
             return False, "Key bị lỗi cấu trúc! Hãy copy lại toàn bộ Key."
 
@@ -48,8 +61,8 @@ def verify_pro_license(machine_id, license_key):
         try:
             payload_json = base64_decode(encoded_payload)
             payload = json.loads(payload_json)
-        except Exception as e:
-            return False, "Lỗi giải mã Key! Định dạng Key bị sai."
+        except Exception:
+            return False, "Lỗi giải mã Key! Định dạng Key bị sai hoặc thiếu ký tự."
 
         # Kiểm tra Chữ ký
         expected_sig = hmac.new(SECRET_KEY, payload_json.encode('utf-8'), hashlib.sha256).hexdigest()[:16].upper()
@@ -78,10 +91,12 @@ class AppController:
         self.root.title("Hệ Thống POS Enterprise")
         self.root.geometry("1150x700")
 
+        # THIẾT LẬP LOGO TỪ HÀM RESOURCE_PATH
         try:
-            self.root.iconbitmap("icon.ico")
-        except:
-            pass
+            icon_path = resource_path("icon.ico")
+            self.root.iconbitmap(icon_path)
+        except Exception as e:
+            print("Không tải được Icon:", e)
 
         self.config = ConfigManager()
         self.check_license_first()
