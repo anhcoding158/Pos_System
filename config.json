@@ -1,0 +1,23 @@
+{
+    "store_info": {
+        "name": "ANH LINH STORE",
+        "address": "Uy Tín - Chât Lượng ",
+        "phone": "0999.888.999"
+    },
+    "hardware": {
+        "printer_name": "Microsoft Print to PDF",
+        "paper_size": "K80"
+    },
+    "security": {
+        "mac_address": "",
+        "is_activated": false
+    },
+    "payment": {
+        "qr_code": "",
+        "secure_qr_code": "MDAwMjAxMDEwMjExMzg1NDAwMTBBMDAwMDAwNzI3MDEyNDAwMDY5NzA0MjIwMTEwMDMzNTgyNjc0OTAyMDhRUklCRlRUQTUzMDM3MDQ1ODAyVk42MzA0MjNmMQ=="
+    },
+    "auth": {
+        "saved_user": "nv01",
+        "saved_pwd": "MTIzNDU2"
+    }
+}
