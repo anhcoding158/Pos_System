@@ -1,16 +1,23 @@
 import os
+import sys
 import bcrypt
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 from database.models import Base, User, RoleEnum
 
-# Tương lai khi cài PostgreSQL, bạn chỉ cần thay dòng này:
-# DATABASE_URL = "postgresql://postgres:matkhau@localhost:5432/pos_enterprise"
+# ================= SIÊU THUẬT TOÁN TÌM ĐƯỜNG DẪN CHO PYINSTALLER =================
+if getattr(sys, 'frozen', False):
+    # 1. Nếu đang chạy bằng file .exe (Khách hàng dùng)
+    # Trỏ thẳng ra thư mục đang chứa file .exe để tạo Database
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    # 2. Nếu đang chạy bằng code trên PyCharm (Bạn đang code)
+    # Lùi ra 1 cấp (thoát khỏi thư mục 'database') để đặt DB ở thư mục gốc dự án
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Hiện tại, cứ để SQLite chạy test schema trước
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 db_path = os.path.join(BASE_DIR, "pos_enterprise_v2.db")
 DATABASE_URL = f"sqlite:///{db_path}"
+# =================================================================================
 
 # Khởi tạo Engine
 engine = create_engine(DATABASE_URL, echo=False)
