@@ -72,6 +72,10 @@ class AppController:
         self.root = ctk.CTk()
         self.root.title("Hệ Thống POS Enterprise")
         self.root.geometry("1150x700")
+        try:
+            self.root.iconbitmap("icon.ico")
+        except:
+            pass
 
         self.config = ConfigManager()
         self.check_license_first()

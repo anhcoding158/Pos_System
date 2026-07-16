@@ -34,7 +34,7 @@ pipeline {
                 if exist dist rmdir /S /Q dist
 
                 :: Build ra thư mục (onedir) để phần mềm chạy ổn định nhất, ẩn cửa sổ đen (noconsole)
-                pyinstaller --noconsole --onedir --windowed --name %APP_NAME% main.py
+                pyinstaller --noconsole --onedir --windowed --icon=icon.ico --name %APP_NAME% main.py
                 '''
             }
         }
@@ -56,8 +56,8 @@ pipeline {
             // Đẩy file ZIP lên giao diện Jenkins để sếp tải về
             archiveArtifacts artifacts: '*.zip', fingerprint: true
         }
-        always {
-            // Dọn dẹp máy chủ Jenkins sau khi làm xong
+        cleanup {
+            // FIX LỖI: Dùng 'cleanup' thay vì 'always' để dọn rác sau khi đã lưu file ZIP xong
             cleanWs()
         }
     }
