@@ -30,41 +30,45 @@ def base64_decode(b64_string: str) -> str:
 
 
 def verify_pro_license(machine_id, license_key):
-    """SIÊU THUẬT TOÁN GIẢI MÃ VÀ KIỂM TRA BẢN QUYỀN"""
     try:
-        if not license_key or not str(license_key).startswith("AL-"):
-            return False, "Chưa kích hoạt hoặc Mã không hợp lệ!"
+        # THÊM: Loại bỏ dấu cách thừa, xuống dòng nếu khách lỡ tay copy dư
+        clean_key = str(license_key).strip().replace("\n", "").replace("\r", "")
 
-        # Cắt lấy phần Dữ liệu (Payload) và Chữ ký (Signature)
-        parts = str(license_key)[3:].split('-')
+        if not clean_key or not clean_key.startswith("AL-"):
+            return False, "Key không hợp lệ! Vui lòng kiểm tra lại."
+
+        parts = clean_key[3:].split('-')
         if len(parts) != 2:
-            return False, "Cấu trúc mã bảo mật đã bị phá hoại!"
+            return False, "Key bị lỗi cấu trúc! Hãy copy lại toàn bộ Key."
 
         encoded_payload, provided_signature = parts
 
-        # Giải mã Payload để đọc thông tin
-        payload_json = base64_decode(encoded_payload)
-        payload = json.loads(payload_json)
+        # Giải mã và xử lý padding Base64 an toàn
+        try:
+            payload_json = base64_decode(encoded_payload)
+            payload = json.loads(payload_json)
+        except Exception:
+            return False, "Lỗi giải mã Key! Key bạn copy có thể bị thiếu ký tự."
 
-        # 1. KIỂM TRA CHỮ KÝ (Chống hack đổi ngày hết hạn)
+        # Kiểm tra Chữ ký
         expected_sig = hmac.new(SECRET_KEY, payload_json.encode('utf-8'), hashlib.sha256).hexdigest()[:16].upper()
-        if provided_signature != expected_sig:
-            return False, "⛔ LỖI AN NINH: Mã kích hoạt đã bị can thiệp trái phép!"
+        if provided_signature.upper() != expected_sig:
+            return False, "⛔ Key này đã bị sửa đổi trái phép!"
 
-        # 2. KIỂM TRA MÃ MÁY (Chống mang Key sang máy khác)
-        if payload.get("m") != machine_id:
-            return False, "⛔ LỖI BẢN QUYỀN: Key này được cấp cho máy khác, không phải máy này!"
+        # Kiểm tra Mã máy
+        if payload.get("m") != machine_id.upper():
+            return False, f"⛔ Key này cấp cho máy {payload.get('m')}, không phải máy này!"
 
-        # 3. KIỂM TRA THỜI HẠN (Chống xài chùa)
+        # Kiểm tra Thời hạn
         exp_date = payload.get("e")
         if exp_date != "PERMANENT":
             exp_dt = datetime.strptime(exp_date, "%Y-%m-%d")
             if datetime.now() > exp_dt:
-                return False, f"⏳ BẢN QUYỀN ĐÃ HẾT HẠN vào ngày {exp_date}!\nVui lòng liên hệ Admin để gia hạn."
+                return False, f"⏳ Bản quyền đã hết hạn vào {exp_date}!"
 
-        return True, f"Bản quyền {payload.get('p')} hợp lệ!"
-    except Exception:
-        return False, "⛔ Lỗi giải mã: Khóa không đúng định dạng!"
+        return True, "Kích hoạt thành công!"
+    except Exception as e:
+        return False, f"Lỗi hệ thống: {str(e)}"
 
 
 class AppController:
