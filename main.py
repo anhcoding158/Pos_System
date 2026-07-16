@@ -24,14 +24,13 @@ def get_machine_id():
 
 
 def base64_decode(b64_string: str) -> str:
-    """Thuật toán giải mã Base64 bù trừ padding"""
-    padding = '=' * (8 - (len(b64_string) % 8)) % 8
+    """Thuật toán giải mã Base64 bù trừ padding (Đã sửa số 8 thành số 4 chuẩn 100%)"""
+    padding = '=' * (4 - (len(b64_string) % 4)) % 4
     return base64.urlsafe_b64decode(b64_string + padding).decode('utf-8')
 
 
 def verify_pro_license(machine_id, license_key):
     try:
-        # THÊM: Loại bỏ dấu cách thừa, xuống dòng nếu khách lỡ tay copy dư
         clean_key = str(license_key).strip().replace("\n", "").replace("\r", "")
 
         if not clean_key or not clean_key.startswith("AL-"):
@@ -47,24 +46,24 @@ def verify_pro_license(machine_id, license_key):
         try:
             payload_json = base64_decode(encoded_payload)
             payload = json.loads(payload_json)
-        except Exception:
-            return False, "Lỗi giải mã Key! Key bạn copy có thể bị thiếu ký tự."
+        except Exception as e:
+            return False, "Lỗi giải mã Key! Định dạng Key bị sai."
 
         # Kiểm tra Chữ ký
         expected_sig = hmac.new(SECRET_KEY, payload_json.encode('utf-8'), hashlib.sha256).hexdigest()[:16].upper()
         if provided_signature.upper() != expected_sig:
-            return False, "⛔ Key này đã bị sửa đổi trái phép!"
+            return False, "⛔ LỖI AN NINH: Mã kích hoạt đã bị can thiệp trái phép!"
 
         # Kiểm tra Mã máy
         if payload.get("m") != machine_id.upper():
-            return False, f"⛔ Key này cấp cho máy {payload.get('m')}, không phải máy này!"
+            return False, f"⛔ LỖI BẢN QUYỀN: Key này cấp cho máy {payload.get('m')}, không phải máy này!"
 
         # Kiểm tra Thời hạn
         exp_date = payload.get("e")
         if exp_date != "PERMANENT":
             exp_dt = datetime.strptime(exp_date, "%Y-%m-%d")
             if datetime.now() > exp_dt:
-                return False, f"⏳ Bản quyền đã hết hạn vào {exp_date}!"
+                return False, f"⏳ BẢN QUYỀN ĐÃ HẾT HẠN vào ngày {exp_date}!"
 
         return True, "Kích hoạt thành công!"
     except Exception as e:
@@ -76,6 +75,7 @@ class AppController:
         self.root = ctk.CTk()
         self.root.title("Hệ Thống POS Enterprise")
         self.root.geometry("1150x700")
+
         try:
             self.root.iconbitmap("icon.ico")
         except:
@@ -85,7 +85,6 @@ class AppController:
         self.check_license_first()
 
     def check_license_first(self):
-        """Bảo vệ ứng dụng trước khi vào màn Đăng nhập"""
         machine_id = get_machine_id()
         is_activated = self.config.get("security", "is_activated")
         saved_key = self.config.get("security", "license_key")
@@ -95,7 +94,6 @@ class AppController:
         if is_activated and is_valid:
             self.show_login_window()
         else:
-            # Nếu có lỗi (hết hạn, sai máy, can thiệp), hiện lỗi cho khách xem
             self.show_activation_window(machine_id, error_msg=msg if saved_key else None)
 
     def show_activation_window(self, machine_id, error_msg=None):
@@ -114,7 +112,6 @@ class AppController:
             ctk.CTkLabel(frame, text="Vui lòng gửi Mã Máy bên dưới cho Nhà phát triển để mua Bản Quyền.",
                          font=("Arial", 13)).pack(pady=(0, 15))
 
-        # MÃ MÁY
         txt_machine = ctk.CTkEntry(frame, width=300, font=("Courier New", 20, "bold"), justify="center",
                                    fg_color="#F1F5F9")
         txt_machine.pack(pady=10)
