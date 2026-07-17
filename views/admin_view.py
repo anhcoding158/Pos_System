@@ -24,8 +24,6 @@ class AdminWindow:
         ctk.set_appearance_mode("light")
 
         self.config = ConfigManager()
-
-        # BỘ NHỚ ĐỆM CỬA SỔ PHỤ (Tránh giật lag khi mở lại)
         self.cached_windows = {}
 
         self.bg_frame = ctk.CTkFrame(self.root, fg_color="#F1F5F9", corner_radius=0)
@@ -46,6 +44,7 @@ class AdminWindow:
         self._build_data_table()
 
         self.load_inventory()
+        self.load_categories()
 
     # ================= THUẬT TOÁN QUẢN LÝ CỬA SỔ PHỤ (CHỐNG GIẬT LAG) =================
     def center_modal(self, window, width, height):
@@ -55,17 +54,13 @@ class AdminWindow:
         window.geometry(f"{width}x{height}+{x}+{y}")
 
     def get_or_create_modal(self, window_key, title_text, width, height):
-        """Siêu thuật toán: Nếu cửa sổ đã có, gọi nó dậy. Nếu chưa, tạo mới."""
-
-        # NẾU CỬA SỔ ĐÃ TỒN TẠI TRONG BỘ NHỚ -> ĐÁNH THỨC NÓ DẬY NGAY LẬP TỨC
         if window_key in self.cached_windows and self.cached_windows[window_key].winfo_exists():
             modal = self.cached_windows[window_key]
-            modal.deiconify()  # Đưa nó ra ánh sáng
+            modal.deiconify()
             modal.lift()
-            modal.grab_set()  # Khóa nền
-            return modal, False  # False nghĩa là "Không phải tạo mới"
+            modal.grab_set()
+            return modal, False
 
-        # NẾU CHƯA CÓ -> TIẾN HÀNH XÂY DỰNG MỚI
         self.root.update_idletasks()
         modal = ctk.CTkToplevel(self.root)
         modal.geometry(f"{width}x{height}")
@@ -83,19 +78,18 @@ class AdminWindow:
 
         def close_modal():
             modal.grab_release()
-            modal.withdraw()  # THUẬT TOÁN ẨN MÌNH, KHÔNG HỦY DIỆT ĐỂ LẦN SAU MỞ LÊN 1MS
+            modal.withdraw()
 
         btn_close = ctk.CTkButton(header, text="✖", width=30, height=30, fg_color="transparent",
                                   hover_color="#FEE2E2", text_color="#EF4444", font=("Arial", 16),
                                   command=close_modal)
         btn_close.pack(side="right", padx=5)
 
-        # Lưu vào kho chứa
         self.cached_windows[window_key] = modal
+        return modal, True
 
-        return modal, True  # True nghĩa là "Vừa tạo mới xong, cần xây dựng ruột bên trong"
+        # ================= GIAO DIỆN CHÍNH =================
 
-    # ================= GIAO DIỆN CHÍNH =================
     def _build_sidebar_menu(self):
         brand_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         brand_frame.pack(fill="x", pady=(40, 30))
@@ -196,6 +190,7 @@ class AdminWindow:
 
         success, msg = QRService.process_and_save_qr(file_path)
         if success:
+            self.config.reload()  # NÂNG CẤP: Ép hệ thống tải lại file cấu hình ngay lập tức!
             messagebox.showinfo("Bảo mật", msg)
         else:
             messagebox.showerror("Cảnh báo An ninh", msg)
@@ -215,32 +210,92 @@ class AdminWindow:
         self.entries = {}
         self.current_img_path = ""
 
-        columns_config = [
-            ("Mã Sản Phẩm *", "code", 120, "SP001"),
-            ("Tên Sản Phẩm *", "name", 300, "Trà Đào"),
-            ("Giá Bán (VNĐ) *", "price", 150, "35000"),
-            ("Tồn Kho *", "stock", 100, "100")
-        ]
+        # Dòng 1: Mã, Tên, Danh mục
+        ctk.CTkLabel(grid_frame, text="Mã Sản Phẩm *", font=("Arial", 12, "bold"), text_color="#64748B").grid(row=0,
+                                                                                                              column=0,
+                                                                                                              sticky="w",
+                                                                                                              padx=(
+                                                                                                              0, 15))
+        self.entries['code'] = ctk.CTkEntry(grid_frame, width=120, height=42, font=("Arial", 14), fg_color="#F8FAFC",
+                                            border_color="#E2E8F0", placeholder_text="VD: SP001")
+        self.entries['code'].grid(row=1, column=0, sticky="w", padx=(0, 15), pady=(5, 10))
 
-        for i, (label_text, key, width, placeholder) in enumerate(columns_config):
-            ctk.CTkLabel(grid_frame, text=label_text, font=("Arial", 12, "bold"), text_color="#64748B").grid(row=0,
-                                                                                                             column=i,
-                                                                                                             sticky="w",
-                                                                                                             padx=(
-                                                                                                             0, 15))
-            entry = ctk.CTkEntry(grid_frame, width=width, height=42, font=("Arial", 14), fg_color="#F8FAFC",
-                                 border_color="#E2E8F0", placeholder_text=placeholder)
-            entry.grid(row=1, column=i, sticky="w", padx=(0, 15), pady=(5, 0))
-            self.entries[key] = entry
+        ctk.CTkLabel(grid_frame, text="Tên Sản Phẩm *", font=("Arial", 12, "bold"), text_color="#64748B").grid(row=0,
+                                                                                                               column=1,
+                                                                                                               sticky="w",
+                                                                                                               padx=(
+                                                                                                               0, 15))
+        self.entries['name'] = ctk.CTkEntry(grid_frame, width=280, height=42, font=("Arial", 14), fg_color="#F8FAFC",
+                                            border_color="#E2E8F0", placeholder_text="VD: Cà phê sữa")
+        self.entries['name'].grid(row=1, column=1, sticky="w", padx=(0, 15), pady=(5, 10))
 
-        ctk.CTkLabel(grid_frame, text="Ảnh minh họa", font=("Arial", 12, "bold"), text_color="#64748B").grid(row=0,
-                                                                                                             column=4,
+        ctk.CTkLabel(grid_frame, text="Danh Mục *", font=("Arial", 12, "bold"), text_color="#64748B").grid(row=0,
+                                                                                                           column=2,
+                                                                                                           sticky="w",
+                                                                                                           padx=(0, 15))
+        self.cb_category = ctk.CTkComboBox(grid_frame, width=180, height=42, font=("Arial", 14), fg_color="#F8FAFC",
+                                           border_color="#E2E8F0")
+        self.cb_category.grid(row=1, column=2, sticky="w", padx=(0, 15), pady=(5, 10))
+
+        # Dòng 2: Giá vốn, Giá Bán, Tồn kho, Ảnh
+        ctk.CTkLabel(grid_frame, text="Giá Vốn (VNĐ) *", font=("Arial", 12, "bold"), text_color="#64748B").grid(row=2,
+                                                                                                                column=0,
+                                                                                                                sticky="w",
+                                                                                                                padx=(
+                                                                                                                0, 15))
+        self.entries['cost_price'] = ctk.CTkEntry(grid_frame, width=120, height=42, font=("Arial", 14),
+                                                  fg_color="#F8FAFC", border_color="#E2E8F0",
+                                                  placeholder_text="VD: 15000")
+        self.entries['cost_price'].grid(row=3, column=0, sticky="w", padx=(0, 15), pady=(5, 0))
+
+        ctk.CTkLabel(grid_frame, text="Giá Bán (VNĐ) *", font=("Arial", 12, "bold"), text_color="#64748B").grid(row=2,
+                                                                                                                column=1,
+                                                                                                                sticky="w",
+                                                                                                                padx=(
+                                                                                                                0, 15))
+        self.entries['price'] = ctk.CTkEntry(grid_frame, width=150, height=42, font=("Arial", 14), fg_color="#F8FAFC",
+                                             border_color="#E2E8F0", placeholder_text="VD: 35000")
+        self.entries['price'].grid(row=3, column=1, sticky="w", padx=(0, 15), pady=(5, 0))
+
+        ctk.CTkLabel(grid_frame, text="Tồn Kho *", font=("Arial", 12, "bold"), text_color="#64748B").grid(row=2,
+                                                                                                          column=2,
+                                                                                                          sticky="w",
+                                                                                                          padx=(0, 15))
+        self.entries['stock'] = ctk.CTkEntry(grid_frame, width=100, height=42, font=("Arial", 14), fg_color="#F8FAFC",
+                                             border_color="#E2E8F0", placeholder_text="VD: 100")
+        self.entries['stock'].grid(row=3, column=2, sticky="w", padx=(0, 15), pady=(5, 0))
+
+        ctk.CTkLabel(grid_frame, text="Ảnh minh họa", font=("Arial", 12, "bold"), text_color="#64748B").grid(row=2,
+                                                                                                             column=3,
                                                                                                              sticky="w",
                                                                                                              padx=(
                                                                                                              0, 15))
         self.btn_select_img = ctk.CTkButton(grid_frame, text="🖼️ Tải Ảnh Lên", fg_color="#8B5CF6",
                                             hover_color="#7C3AED", height=42, command=self.select_product_image)
-        self.btn_select_img.grid(row=1, column=4, sticky="w", padx=(0, 15), pady=(5, 0))
+        self.btn_select_img.grid(row=3, column=3, sticky="w", padx=(0, 15), pady=(5, 0))
+
+    def load_categories(self):
+        # Lấy danh sách category từ chính các sản phẩm ĐANG BÁN (y hệt Cashier)
+        success, data = ProductService.get_all_active()
+        active_cats = set()
+        if success:
+            for p in data:
+                # data chứa: (code, name, category, cost_price, price, stock, img_path)
+                if len(p) > 2 and p[2]:
+                    active_cats.add(p[2])
+
+        sorted_cats = sorted(list(active_cats))
+
+        # Nếu xóa sạch sành sanh không còn SP nào, cho list mặc định
+        if not sorted_cats:
+            sorted_cats = ["Đồ uống", "Đồ ăn", "Khác"]
+
+        self.cb_category.configure(values=sorted_cats)
+
+        # Nếu danh mục đang hiển thị trên Combobox vừa bị xóa mất, reset nó về cái đầu tiên
+        current_val = self.cb_category.get()
+        if current_val not in sorted_cats:
+            self.cb_category.set(sorted_cats[0])
 
     def select_product_image(self):
         file_path = filedialog.askopenfilename(title="Chọn ảnh sản phẩm",
@@ -272,9 +327,9 @@ class AdminWindow:
         style = ttk.Style()
         style.theme_use("clam")
 
-        style.configure("Treeview", background="white", foreground="#0F172A", rowheight=45, font=("Arial", 13),
+        style.configure("Treeview", background="white", foreground="#0F172A", rowheight=40, font=("Arial", 12),
                         borderwidth=1, relief="solid")
-        style.configure("Treeview.Heading", background="#6366F1", foreground="white", font=("Arial", 13, "bold"),
+        style.configure("Treeview.Heading", background="#6366F1", foreground="white", font=("Arial", 12, "bold"),
                         borderwidth=1, relief="flat")
         style.map("Treeview", background=[("selected", "#EFF6FF")], foreground=[("selected", "#4F46E5")])
 
@@ -284,23 +339,26 @@ class AdminWindow:
         scroll_y = ttk.Scrollbar(tree_frame)
         scroll_y.pack(side="right", fill="y")
 
-        self.tree = ttk.Treeview(tree_frame, columns=("stt", "code", "name", "price", "stock"), show="headings",
-                                 yscrollcommand=scroll_y.set)
+        self.tree = ttk.Treeview(tree_frame, columns=("stt", "code", "name", "category", "cost", "price", "stock"),
+                                 show="headings", yscrollcommand=scroll_y.set)
         scroll_y.config(command=self.tree.yview)
 
         self.tree.tag_configure('evenrow', background='#F8FAFC')
         self.tree.tag_configure('oddrow', background='white')
 
-        self.tree.heading("stt", text="STT", anchor="center")
-        self.tree.column("stt", width=60, anchor="center")
-        self.tree.heading("code", text="MÃ SẢN PHẨM", anchor="center")
-        self.tree.column("code", width=140, anchor="center")
-        self.tree.heading("name", text="TÊN SẢN PHẨM", anchor="w")
-        self.tree.column("name", width=420, anchor="w")
-        self.tree.heading("price", text="ĐƠN GIÁ (VNĐ)", anchor="e")
-        self.tree.column("price", width=180, anchor="e")
-        self.tree.heading("stock", text="TỒN KHO", anchor="center")
-        self.tree.column("stock", width=120, anchor="center")
+        cols_config = [
+            ("stt", "STT", 50, "center"),
+            ("code", "MÃ", 100, "center"),
+            ("name", "TÊN SẢN PHẨM", 280, "w"),
+            ("category", "DANH MỤC", 120, "center"),
+            ("cost", "GIÁ VỐN", 120, "e"),
+            ("price", "GIÁ BÁN", 120, "e"),
+            ("stock", "TỒN KHO", 80, "center")
+        ]
+
+        for col, heading, width, anchor in cols_config:
+            self.tree.heading(col, text=heading, anchor=anchor)
+            self.tree.column(col, width=width, anchor=anchor)
 
         self.tree.pack(fill="both", expand=True)
         self.tree.bind("<<TreeviewSelect>>", self.on_item_select)
@@ -310,13 +368,13 @@ class AdminWindow:
         if not selected: return
         vals = self.tree.item(selected[0])['values']
 
-        for entry in self.entries.values():
-            entry.delete(0, 'end')
-
+        self.clear_fields()
         self.entries['code'].insert(0, vals[1])
         self.entries['name'].insert(0, vals[2])
-        self.entries['price'].insert(0, str(vals[3]).replace(",", ""))
-        self.entries['stock'].insert(0, vals[4])
+        self.cb_category.set(vals[3])
+        self.entries['cost_price'].insert(0, str(vals[4]).replace(",", ""))
+        self.entries['price'].insert(0, str(vals[5]).replace(",", ""))
+        self.entries['stock'].insert(0, vals[6])
 
     def load_inventory(self):
         for item in self.tree.get_children(): self.tree.delete(item)
@@ -324,7 +382,9 @@ class AdminWindow:
         if success:
             for index, p in enumerate(data_or_error):
                 tag = 'evenrow' if index % 2 == 0 else 'oddrow'
-                self.tree.insert("", tk.END, values=(index + 1, p[0], p[1], f"{p[2]:,.0f}", p[3]), tags=(tag,))
+                # data_or_error chứa: (code, name, category, cost_price, price, stock, img_path)
+                self.tree.insert("", tk.END, values=(index + 1, p[0], p[1], p[2], f"{p[3]:,.0f}", f"{p[4]:,.0f}", p[5]),
+                                 tags=(tag,))
         else:
             messagebox.showerror("Lỗi CSDL", data_or_error)
 
@@ -332,16 +392,20 @@ class AdminWindow:
         try:
             code = self.entries['code'].get().strip()
             name = self.entries['name'].get().strip()
+            cat = self.cb_category.get().strip()
+            cost = float(self.entries['cost_price'].get())
             price = float(self.entries['price'].get())
             stock = int(self.entries['stock'].get())
 
-            if not code or not name:
-                messagebox.showerror("Lỗi", "Mã và Tên sản phẩm không được để trống!")
+            if not code or not name or not cat:
+                messagebox.showerror("Lỗi", "Mã, Tên sản phẩm và Danh mục không được để trống!")
                 return
 
-            success, msg = ProductService.add_product(code, name, price, stock, getattr(self, 'current_img_path', ""))
+            success, msg = ProductService.add_product(code, name, cat, cost, price, stock,
+                                                      getattr(self, 'current_img_path', ""))
             if success:
                 self.load_inventory()
+                self.load_categories()  # Nạp lại danh mục lỡ có thêm danh mục mới
                 self.clear_fields()
                 messagebox.showinfo("Thành công", msg)
             else:
@@ -353,13 +417,16 @@ class AdminWindow:
         try:
             code = self.entries['code'].get().strip()
             name = self.entries['name'].get().strip()
+            cat = self.cb_category.get().strip()
+            cost = float(self.entries['cost_price'].get())
             price = float(self.entries['price'].get())
             stock = int(self.entries['stock'].get())
 
-            success, msg = ProductService.update_product(code, name, price, stock,
+            success, msg = ProductService.update_product(code, name, cat, cost, price, stock,
                                                          getattr(self, 'current_img_path', ""))
             if success:
                 self.load_inventory()
+                self.load_categories()
                 self.clear_fields()
                 messagebox.showinfo("Thành công", msg)
             else:
@@ -375,6 +442,7 @@ class AdminWindow:
             success, msg = ProductService.soft_delete_product(code)
             if success:
                 self.load_inventory()
+                self.load_categories()  # NÂNG CẤP: Ép Combobox tải lại để xóa sổ danh mục mồ côi
                 self.clear_fields()
                 messagebox.showinfo("Thành công", msg)
             else:
@@ -385,6 +453,11 @@ class AdminWindow:
             entry.delete(0, 'end')
         self.current_img_path = ""
         self.btn_select_img.configure(text="🖼️ Tải Ảnh Lên", fg_color="#8B5CF6")
+
+        # Reset Combobox về danh mục đầu tiên trong danh sách hiện có
+        if self.cb_category.cget("values"):
+            self.cb_category.set(self.cb_category.cget("values")[0])
+
         if hasattr(self, 'tree') and self.tree.selection():
             self.tree.selection_remove(self.tree.selection())
 
@@ -393,15 +466,11 @@ class AdminWindow:
 
     # ================= QUẢN LÝ NHÂN SỰ =================
     def show_user_management_window(self):
-        # DÙNG THUẬT TOÁN KIỂM TRA BỘ NHỚ ĐỆM TRƯỚC KHI TẠO CỬA SỔ
         user_win, is_new = self.get_or_create_modal("user_modal", "👥 Quản lý Nhân sự", 850, 550)
-
         if not is_new:
-            # Nếu chỉ gọi cửa sổ cũ dậy, cần tải lại dữ liệu nhân sự mới nhất từ CSDL
             if hasattr(self, 'load_users_func'): self.load_users_func()
             return
 
-        # NẾU LÀ LẦN ĐẦU MỞ, TIẾN HÀNH VẼ GIAO DIỆN BÊN TRONG CỬA SỔ NÀY
         form_frame = ctk.CTkFrame(user_win, fg_color="white", corner_radius=10, border_width=1, border_color="#E2E8F0")
         form_frame.pack(fill="x", padx=20, pady=20)
 
@@ -464,7 +533,6 @@ class AdminWindow:
             finally:
                 session.close()
 
-        # Lưu lại hàm tải dữ liệu để gọi mỗi khi đánh thức cửa sổ này
         self.load_users_func = load_users
 
         def on_user_select(event):
@@ -553,7 +621,6 @@ class AdminWindow:
                 try:
                     user_id = tree_users.item(selected[0])['values'][0]
                     user = session.query(User).filter_by(id=user_id).first()
-
                     user.is_active = False
                     session.commit()
 
@@ -578,11 +645,8 @@ class AdminWindow:
 
     # ================= BÁO CÁO DOANH THU =================
     def show_report_window(self):
-        # DÙNG THUẬT TOÁN KIỂM TRA BỘ NHỚ ĐỆM
-        report_win, is_new = self.get_or_create_modal("report_modal", "📊 Báo cáo kinh doanh", 900, 650)
-
+        report_win, is_new = self.get_or_create_modal("report_modal", "📊 Báo cáo kinh doanh", 950, 650)
         if not is_new:
-            # Chỉ nạp lại báo cáo (để lỡ có đơn mới vừa bán thì hiển thị luôn)
             if hasattr(self, 'load_report_func'): self.load_report_func()
             return
 
@@ -613,6 +677,7 @@ class AdminWindow:
             return lbl
 
         lb_revenue = make_card(dash, "💰 DOANH THU", "#10B981")
+        lb_profit = make_card(dash, "📈 LỢI NHUẬN", "#8B5CF6")  # THẺ MỚI THÊM
         lb_orders = make_card(dash, "🧾 HÓA ĐƠN", "#3B82F6")
         lb_products = make_card(dash, "📦 ĐÃ BÁN", "#F59E0B")
 
@@ -661,7 +726,12 @@ class AdminWindow:
                 items = session.query(OrderItem).filter(OrderItem.order_id.in_(order_ids)).all()
                 total_products = sum(i.quantity for i in items)
 
+                # TÍNH TOÁN LỢI NHUẬN TỪ GIÁ VỐN
+                total_cost = sum(i.base_cost * i.quantity for i in items)
+                total_profit = total_rev - total_cost
+
                 lb_revenue.configure(text=f"{total_rev:,.0f} đ")
+                lb_profit.configure(text=f"{total_profit:,.0f} đ")
                 lb_orders.configure(text=str(len(orders)))
                 lb_products.configure(text=str(total_products))
 

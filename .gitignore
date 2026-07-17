@@ -7,3 +7,5 @@ dist/
 pos_enterprise_v2.db
 .idea/
 config.json
+assets/
+receipts/

@@ -81,6 +81,10 @@ class Product(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     code: Mapped[str] = mapped_column(String(20), unique=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    # ---> TÍNH NĂNG MỚI: Giá vốn (để tính lợi nhuận)
+    cost_price: Mapped[float] = mapped_column(Float, default=0.0)
+
     price: Mapped[float] = mapped_column(Float, nullable=False)
     stock: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -153,6 +157,10 @@ class OrderItem(Base):
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
 
     quantity: Mapped[int] = mapped_column(Integer, default=1)
+
+    # ---> TÍNH NĂNG MỚI: Đóng băng giá vốn tại thời điểm mua (để tính Lợi Nhuận)
+    base_cost: Mapped[float] = mapped_column(Float, default=0.0)
+
     base_price: Mapped[float] = mapped_column(Float)  # Đóng băng giá tại thời điểm mua
     note: Mapped[str] = mapped_column(String(255), nullable=True)  # Ghi chú tay (VD: Xin thêm bát phụ)
     status: Mapped[ItemStatusEnum] = mapped_column(Enum(ItemStatusEnum), default=ItemStatusEnum.PENDING)

@@ -4,7 +4,7 @@ from tkinter import messagebox
 import qrcode
 import os
 import base64
-import math  # Tính toán đường bay vòng cung
+import math
 from datetime import datetime
 from PIL import Image, ImageTk
 
@@ -29,7 +29,7 @@ class CashierWindow:
 
         self.sales_ctrl = SalesController()
         self.cart = {}
-        self.cart_ui_items = {}  # BỘ ĐỆM (CACHE) DOM ĐỂ CẬP NHẬT GIAO DIỆN KHÔNG BỊ GIẬT
+        self.cart_ui_items = {}
         self.total_amount = 0
         self.current_bill_id = None
         self.products_db = []
@@ -43,8 +43,7 @@ class CashierWindow:
         self.load_products()
         self.update_cart_ui()
 
-        # ================= MODAL SẠCH SẼ (KHÔNG NỀN ĐEN) =================
-
+    # ================= MODAL SẠCH SẼ =================
     def center_modal(self, window, width, height):
         self.root.update_idletasks()
         x = self.root.winfo_rootx() + (self.root.winfo_width() // 2) - (width // 2)
@@ -53,14 +52,12 @@ class CashierWindow:
 
     def create_modern_modal(self, title_text, width, height):
         self.root.update_idletasks()
-
         modal = ctk.CTkToplevel(self.root)
         modal.geometry(f"{width}x{height}")
         self.center_modal(modal, width, height)
         modal.overrideredirect(True)
         modal.attributes("-topmost", True)
         modal.grab_set()
-
         modal.configure(fg_color="#F8FAFC", border_width=2, border_color="#94A3B8")
 
         header = ctk.CTkFrame(modal, fg_color="white", height=45, corner_radius=0)
@@ -77,29 +74,25 @@ class CashierWindow:
                                   hover_color="#FEE2E2", text_color="#EF4444", font=("Arial", 16),
                                   command=close_modal)
         btn_close.pack(side="right", padx=5)
-
         return modal
 
-    # ================= HIỆU ỨNG BAY VÀO GIỎ HÀNG (PARABOL 60FPS) =================
+    # ================= HIỆU ỨNG BAY VÀO GIỎ HÀNG =================
     def play_add_animation(self, source_widget, code):
         try:
-            # Lấy tọa độ thẻ sản phẩm đang click
             start_x = source_widget.winfo_rootx() - self.root.winfo_rootx() + 40
             start_y = source_widget.winfo_rooty() - self.root.winfo_rooty() + 40
-
-            # Tọa độ đích (Giỏ hàng)
             target_x = self.right_panel.winfo_rootx() - self.root.winfo_rootx() + 50
             target_y = self.right_panel.winfo_rooty() - self.root.winfo_rooty() + 150
 
-            # Khởi tạo Cache ảnh động Native để max tốc độ
             if not hasattr(self, 'anim_images'): self.anim_images = {}
-
             anim_lbl = tk.Label(self.root, bd=0, bg="#F1F5F9")
 
             p = next((item for item in self.products_db if item[0] == code), None)
-            if p and len(p) > 4 and p[4] and os.path.exists(p[4]):
+
+            # Ảnh nằm ở vị trí index 6
+            if p and len(p) > 6 and p[6] and os.path.exists(p[6]):
                 if code not in self.anim_images:
-                    pil_img = Image.open(p[4]).resize((50, 50))
+                    pil_img = Image.open(p[6]).resize((50, 50))
                     self.anim_images[code] = ImageTk.PhotoImage(pil_img)
                 anim_lbl.configure(image=self.anim_images[code])
             else:
@@ -114,10 +107,9 @@ class CashierWindow:
 
             def move(step=0):
                 if step <= steps:
-                    # Thuật toán Parabol: Bay cong lên trên rớt xuống
                     curve = math.sin(math.pi * (step / steps)) * 100
                     anim_lbl.place(x=start_x + dx * step, y=start_y + dy * step - curve)
-                    self.root.after(15, move, step + 1)  # Tốc độ 60 khung hình/s
+                    self.root.after(15, move, step + 1)
                 else:
                     anim_lbl.destroy()
 
@@ -125,8 +117,7 @@ class CashierWindow:
         except Exception:
             pass
 
-            # ================= GIAO DIỆN CHÍNH =================
-
+    # ================= GIAO DIỆN CHÍNH =================
     def _build_ui(self):
         self.main_frame = ctk.CTkFrame(self.root, fg_color="#F1F5F9")
         self.main_frame.pack(fill="both", expand=True)
@@ -154,8 +145,8 @@ class CashierWindow:
         text_box.pack(side="left")
         ctk.CTkLabel(text_box, text="SẢNH DỊCH VỤ", font=("Arial", 22, "bold"), text_color="#0F172A", anchor="w").pack(
             fill="x")
-        ctk.CTkLabel(text_box, text="Chọn món nhanh chóng, thanh toán tiện lợi", font=("Arial", 12),
-                     text_color="#64748B", anchor="w").pack(fill="x")
+        ctk.CTkLabel(text_box, text="Đồng bộ danh mục tự động từ Admin", font=("Arial", 12), text_color="#64748B",
+                     anchor="w").pack(fill="x")
 
         ctk.CTkButton(header_frame, text="🚪 Đăng xuất", fg_color="#EF4444", hover_color="#DC2626",
                       width=100, height=40, font=("Arial", 13, "bold"), command=self.logout).pack(side="right")
@@ -169,20 +160,12 @@ class CashierWindow:
         self.search_entry.pack(fill="x", padx=15, pady=5)
         self.search_entry.bind("<KeyRelease>", self.on_search)
 
-        self.category_frame = ctk.CTkFrame(self.left_panel, fg_color="transparent")
+        # NÂNG CẤP: Chuyển thanh danh mục thành Scrollable nằm ngang đề phòng Admin tạo quá nhiều danh mục
+        self.category_frame = ctk.CTkScrollableFrame(self.left_panel, fg_color="transparent", height=50,
+                                                     orientation="horizontal")
         self.category_frame.pack(fill="x", pady=(0, 15))
-
-        categories = ["Tất cả", "🍹 Đồ uống", "🍔 Đồ ăn", "🍦 Tráng miệng", "📦 Khác"]
         self.category_buttons = []
         self.current_category = "Tất cả"
-
-        for cat in categories:
-            btn = ctk.CTkButton(self.category_frame, text=cat, font=("Arial", 14, "bold"),
-                                fg_color="#E2E8F0", text_color="#475569", hover_color="#CBD5E1",
-                                height=40, corner_radius=20,
-                                command=lambda c=cat: self.filter_by_category(c))
-            btn.pack(side="left", padx=(0, 10))
-            self.category_buttons.append(btn)
 
         self.product_grid = ctk.CTkScrollableFrame(self.left_panel, fg_color="transparent")
         self.product_grid.pack(fill="both", expand=True)
@@ -206,18 +189,17 @@ class CashierWindow:
         self.lbl_total = ctk.CTkLabel(total_frame, text="0 đ", font=("Arial", 28, "bold"), text_color="#C2410C")
         self.lbl_total.pack(side="right", padx=15, pady=15)
 
-        self.btn_checkout = ctk.CTkButton(bottom_frame, text="💰 THANH TOÁN ĐƠN",
-                                          fg_color="#10B981", hover_color="#059669", height=60,
-                                          font=("Arial", 16, "bold"), command=self.show_payment_modal)
+        self.btn_checkout = ctk.CTkButton(bottom_frame, text="💰 THANH TOÁN ĐƠN", fg_color="#10B981",
+                                          hover_color="#059669", height=60, font=("Arial", 16, "bold"),
+                                          command=self.show_payment_modal)
         self.btn_checkout.pack(fill="x", pady=(0, 10))
 
-        self.btn_print = ctk.CTkButton(bottom_frame, text="🖨️ IN HÓA ĐƠN ĐIỆN TỬ",
-                                       fg_color="#0EA5E9", hover_color="#0284C7", height=50,
-                                       font=("Arial", 14, "bold"), state="disabled", command=self.print_receipt)
+        self.btn_print = ctk.CTkButton(bottom_frame, text="🖨️ IN HÓA ĐƠN ĐIỆN TỬ", fg_color="#0EA5E9",
+                                       hover_color="#0284C7", height=50, font=("Arial", 14, "bold"), state="disabled",
+                                       command=self.print_receipt)
         self.btn_print.pack(fill="x", pady=(0, 10))
 
-        ctk.CTkButton(bottom_frame, text="🔄 TẠO ĐƠN MỚI",
-                      fg_color="#F97316", hover_color="#EA580C", height=45,
+        ctk.CTkButton(bottom_frame, text="🔄 TẠO ĐƠN MỚI", fg_color="#F97316", hover_color="#EA580C", height=45,
                       font=("Arial", 14, "bold"), command=self.clear_for_new_order).pack(fill="x", pady=(0, 15))
 
         self.status_border = ctk.CTkFrame(bottom_frame, fg_color="#F8FAFC", border_width=2, border_color="#E2E8F0",
@@ -228,59 +210,68 @@ class CashierWindow:
                                        font=("Arial", 14, "bold"))
         self.lbl_status.pack(expand=True)
 
-    def get_category_theme(self, name):
-        name_lower = name.lower()
-        if any(k in name_lower for k in ['nước', 'trà', 'cafe', 'cà phê', 'bia', 'coca', 'pepsi', 'sinh tố', 'sữa']):
-            icon = "🍹"
-            if 'trà' in name_lower:
-                icon = "🍵"
-            elif any(k in name_lower for k in ['cafe', 'cà phê']):
-                icon = "☕"
-            elif 'sữa' in name_lower and 'sữa chua' not in name_lower:
-                icon = "🥛"
-            elif 'bia' in name_lower:
-                icon = "🍺"
-            return "🍹 Đồ uống", icon, "#E0F2FE", "#BAE6FD", "#0369A1"
-
-        elif any(k in name_lower for k in
-                 ['mỳ', 'cơm', 'phở', 'bún', 'thịt', 'lẩu', 'nướng', 'gà', 'bò', 'heo', 'cá', 'canh']):
-            icon = "🍔"
-            if any(k in name_lower for k in ['bún', 'phở', 'mỳ', 'miến']):
-                icon = "🍜"
-            elif 'cơm' in name_lower:
-                icon = "🍛"
-            elif 'thịt' in name_lower or 'nướng' in name_lower:
-                icon = "🥩"
-            elif 'cá' in name_lower:
-                icon = "🐟"
-            elif 'bánh mỳ' in name_lower or 'bánh mì' in name_lower:
-                icon = "🥖"
-            return "🍔 Đồ ăn", icon, "#FEE2E2", "#FECACA", "#B91C1C"
-
-        elif any(k in name_lower for k in ['kem', 'bánh', 'chè', 'bim bim', 'snack', 'sữa chua', 'trái cây']):
-            icon = "🍰"
-            if 'kem' in name_lower:
-                icon = "🍦"
-            elif 'sữa chua' in name_lower:
-                icon = "🍨"
-            elif any(k in name_lower for k in ['bim bim', 'snack']):
-                icon = "🍟"
-            return "🍦 Tráng miệng", icon, "#FEF3C7", "#FDE68A", "#B45309"
+    # NÂNG CẤP: Dựa vào tên Danh Mục xịn để gắn icon và màu sắc cho đẹp mắt
+    def get_category_theme(self, cat_name):
+        cat_lower = cat_name.lower()
+        if any(k in cat_lower for k in ['uống', 'trà', 'cafe', 'cà phê', 'bia', 'nước']):
+            return "🍹", "#E0F2FE", "#BAE6FD", "#0369A1"
+        elif any(k in cat_lower for k in ['ăn', 'mỳ', 'cơm', 'phở', 'bún', 'lẩu', 'nướng']):
+            return "🍔", "#FEE2E2", "#FECACA", "#B91C1C"
+        elif any(k in cat_lower for k in ['kem', 'bánh', 'chè', 'tráng miệng', 'ngọt']):
+            return "🍰", "#FEF3C7", "#FDE68A", "#B45309"
         else:
-            return "📦 Khác", "🍱", "#F1F5F9", "#E2E8F0", "#334155"
+            return "📦", "#F1F5F9", "#E2E8F0", "#334155"
 
     def load_products(self):
         success, products = ProductService.get_all_active()
         if success:
             self.products_db = products
-            self.filter_by_category(self.current_category)
+            self.build_dynamic_categories()  # NÂNG CẤP: Gọi hàm tự động tạo Nút Danh Mục
         else:
             messagebox.showerror("Lỗi", "Không thể tải danh sách sản phẩm!")
+
+    def build_dynamic_categories(self):
+        # 1. Xóa sạch các nút cũ (nếu có)
+        for widget in self.category_frame.winfo_children():
+            widget.destroy()
+        self.category_buttons = []
+
+        # 2. THUẬT TOÁN MỚI: Lọc Danh mục trực tiếp từ các sản phẩm đang TỒN TẠI
+        # self.products_db chứa (code, name, cat_name, price, stock, img_path) -> cat_name ở vị trí số 2
+        active_cats = set()  # Dùng set để tự động loại bỏ các danh mục bị trùng tên
+        for p in self.products_db:
+            if len(p) > 2 and p[2]:
+                active_cats.add(p[2])
+
+        # Chuyển set thành list và sắp xếp theo bảng chữ cái ABC cho đẹp
+        sorted_cats = sorted(list(active_cats))
+
+        # Thêm nút "Tất cả" lên đầu tiên
+        categories = ["Tất cả"] + sorted_cats
+
+        # 3. Tạo nút động
+        for cat in categories:
+            icon, _, _, _ = self.get_category_theme(cat)
+            display_text = "Tất cả" if cat == "Tất cả" else f"{icon} {cat}"
+
+            btn = ctk.CTkButton(self.category_frame, text=display_text, font=("Arial", 14, "bold"),
+                                fg_color="#E2E8F0", text_color="#475569", hover_color="#CBD5E1",
+                                height=40, corner_radius=20,
+                                command=lambda c=cat: self.filter_by_category(c))
+            btn.pack(side="left", padx=(0, 10))
+            self.category_buttons.append(btn)
+
+        # Ép chọn lại danh mục hiện tại (hoặc về "Tất cả" nếu danh mục cũ vừa bị bốc hơi)
+        self.filter_by_category(self.current_category if self.current_category in categories else "Tất cả")
 
     def filter_by_category(self, category):
         self.current_category = category
         for btn in self.category_buttons:
-            if btn.cget("text") == category:
+            # So sánh chuỗi text của nút (cần bỏ bớt icon nếu có)
+            btn_cat_name = btn.cget("text").split(" ", 1)[-1] if " " in btn.cget("text") and btn.cget(
+                "text") != "Tất cả" else btn.cget("text")
+
+            if btn_cat_name == category:
                 btn.configure(fg_color="#10B981", text_color="white", hover_color="#059669")
             else:
                 btn.configure(fg_color="#E2E8F0", text_color="#475569", hover_color="#CBD5E1")
@@ -290,11 +281,13 @@ class CashierWindow:
         keyword = self.search_entry.get().strip().lower()
         filtered = []
         for p in self.products_db:
-            code, name, price, stock = p[0], p[1], p[2], p[3]
-            cat_name, _, _, _, _ = self.get_category_theme(name)
+            # p = (code, name, category, cost_price, price, stock, img_path)
+            code, name, cat_name, price, stock = p[0], p[1], p[2], p[4], p[5]
 
             match_text = keyword in code.lower() or keyword in name.lower() if keyword else True
+            # NÂNG CẤP: Lọc CHUẨN XÁC theo Danh Mục từ Database, không đoán mò nữa
             match_cat = True if self.current_category == "Tất cả" else cat_name == self.current_category
+
             if match_text and match_cat:
                 filtered.append(p)
 
@@ -309,20 +302,18 @@ class CashierWindow:
 
         if not hasattr(self, 'img_cache'): self.img_cache = {}
 
-        # NÂNG CẤP: Dictionary lưu trữ các Label Tồn Kho để cập nhật TẠI CHỖ
         self.stock_labels = {}
         self.card_frames = {}
 
         for p in data_list:
-            code, name, price, stock = p[0], p[1], p[2], p[3]
-            img_path = p[4] if len(p) > 4 else ""
-            _, icon, bg_color, hover_color, text_color = self.get_category_theme(name)
+            code, name, cat_name, price, stock = p[0], p[1], p[2], p[4], p[5]
+            img_path = p[6] if len(p) > 6 else ""
+            icon, bg_color, hover_color, text_color = self.get_category_theme(cat_name)
 
             in_cart_qty = self.cart.get(code, {}).get('qty', 0)
             real_stock = stock - in_cart_qty
             is_out_of_stock = real_stock <= 0
 
-            # KHUNG CỐ ĐỊNH, KHÔNG ĐỔI MÀU NỀN ĐỂ KHÔNG GIẬT
             card = ctk.CTkFrame(self.product_grid, fg_color="white", corner_radius=12, border_width=2,
                                 border_color="#E2E8F0", width=180, height=225)
             card.pack_propagate(False)
@@ -359,13 +350,11 @@ class CashierWindow:
                 name_lbl.bind("<Button-1>", cmd)
                 price_lbl.bind("<Button-1>", cmd)
 
-                # CHỈ ĐỔI MÀU VIỀN ĐỂ GPU CHẠY MƯỢT
                 card.bind("<Enter>", lambda e, c=card: c.configure(border_color="#3B82F6"))
                 card.bind("<Leave>", lambda e, c=card: c.configure(border_color="#E2E8F0"))
 
             price_lbl.pack()
 
-            # LƯU CHÚNG VÀO BỘ NHỚ ĐỂ SAU NÀY SỬA CHỮ MÀ KHÔNG CẦN TẢI LẠI ẢNH
             self.stock_labels[code] = price_lbl
             self.card_frames[code] = card
 
@@ -375,11 +364,10 @@ class CashierWindow:
                 row += 1
 
     def update_grid_stocks_in_place(self):
-        """SIÊU THUẬT TOÁN: Chỉ thay đổi chữ Tồn Kho, TUYỆT ĐỐI không tải lại giao diện"""
         if not hasattr(self, 'stock_labels'): return
 
         for p in getattr(self, 'last_filtered_data', self.products_db):
-            code, name, price, stock = p[0], p[1], p[2], p[3]
+            code, price, stock = p[0], p[4], p[5]
             in_cart_qty = self.cart.get(code, {}).get('qty', 0)
             real_stock = stock - in_cart_qty
 
@@ -394,7 +382,7 @@ class CashierWindow:
                     lbl.configure(text=f"{price:,.0f} ₫\n(Còn: {real_stock})", text_color="#059669")
                     card.configure(fg_color="white")
 
-    # ================= LOGIC GIỎ HÀNG (DOM DIFFING - CẬP NHẬT 0.1MS) =================
+    # ================= LOGIC GIỎ HÀNG =================
     def add_to_cart(self, code, source_widget=None):
         if getattr(self, 'reset_timer', None):
             self.root.after_cancel(self.reset_timer)
@@ -403,20 +391,19 @@ class CashierWindow:
         p = next((item for item in self.products_db if item[0] == code), None)
         if not p: return
 
-        stock = p[3]
+        stock = p[5]
         current_qty = self.cart.get(code, {}).get('qty', 0)
         if current_qty + 1 > stock:
             messagebox.showwarning("Hết hàng", f"Món '{p[1]}' chỉ còn tối đa {stock} phần!")
             return
 
-        # NẾU CÓ DƯ DẢ TỒN KHO -> BẮT ĐẦU CHẠY ANIMATION BAY
         if source_widget:
             self.play_add_animation(source_widget, code)
 
         if code in self.cart:
             self.cart[code]['qty'] += 1
         else:
-            self.cart[code] = {'name': p[1], 'price': p[2], 'qty': 1}
+            self.cart[code] = {'name': p[1], 'price': p[4], 'qty': 1}
         self.update_cart_ui()
 
     def change_qty(self, code, amount):
@@ -427,19 +414,17 @@ class CashierWindow:
             del self.cart[code]
         else:
             p = next((item for item in self.products_db if item[0] == code), None)
-            if p and new_qty > p[3]:
-                messagebox.showwarning("Hết hàng", f"Món '{p[1]}' chỉ còn tối đa {p[3]} phần!")
+            if p and new_qty > p[5]:
+                messagebox.showwarning("Hết hàng", f"Món '{p[1]}' chỉ còn tối đa {p[5]} phần!")
                 return
             self.cart[code]['qty'] = new_qty
 
         self.update_cart_ui()
 
     def update_cart_ui(self):
-        """SIÊU THUẬT TOÁN: Chỉ vẽ mới khi món mới vào, món cũ chỉ sửa số"""
         if not hasattr(self, 'cart_scroll') or not self.cart_scroll.winfo_exists():
             return
 
-        # Dọn dẹp những dòng đã bị xóa về 0
         codes_in_cart = set(self.cart.keys())
         for code in list(self.cart_ui_items.keys()):
             if code not in codes_in_cart:
@@ -448,7 +433,6 @@ class CashierWindow:
 
         self.total_amount = 0
 
-        # Nếu Giỏ Hàng rỗng -> Bật màn hình trống
         if not self.cart:
             if not hasattr(self, 'empty_cart_frame') or not self.empty_cart_frame.winfo_exists():
                 self.empty_cart_frame = ctk.CTkFrame(self.cart_scroll, fg_color="transparent")
@@ -465,21 +449,17 @@ class CashierWindow:
             self.update_grid_stocks_in_place()
             return
         else:
-            # Nếu có món, Tắt màn hình trống
             if hasattr(self, 'empty_cart_frame') and self.empty_cart_frame.winfo_exists():
                 self.empty_cart_frame.destroy()
 
-        # CẬP NHẬT/VẼ THẺ MÓN TRONG GIỎ HÀNG
         for code, item in self.cart.items():
             total = item['price'] * item['qty']
             self.total_amount += total
 
             if code in self.cart_ui_items:
-                # Đã có sẵn -> CHỈ CẦN SỬA SỐ
                 self.cart_ui_items[code]['lbl_qty'].configure(text=str(item['qty']))
                 self.cart_ui_items[code]['lbl_price'].configure(text=f"{total:,.0f} đ")
             else:
-                # Món mới hoàn toàn -> TẠO KHUNG
                 item_card = ctk.CTkFrame(self.cart_scroll, fg_color="white", corner_radius=8, border_width=1,
                                          border_color="#E2E8F0")
                 item_card.pack(fill="x", pady=4, padx=2)
@@ -519,7 +499,6 @@ class CashierWindow:
         if hasattr(self, 'lbl_total') and self.lbl_total.winfo_exists():
             self.lbl_total.configure(text=f"{self.total_amount:,.0f} đ")
 
-        # Cập nhật số Tồn Kho trên Sảnh Dịch Vụ ngay lập tức
         self.update_grid_stocks_in_place()
 
     def remove_item(self, code):
@@ -588,8 +567,8 @@ class CashierWindow:
                      text_color="#64748B").pack()
 
         self.btn_confirm_pay = ctk.CTkButton(self.pay_win, text="✅ HOÀN TẤT & CHỐT ĐƠN", height=55,
-                                             font=("Arial", 16, "bold"),
-                                             fg_color="#10B981", hover_color="#059669", command=self.process_payment)
+                                             font=("Arial", 16, "bold"), fg_color="#10B981", hover_color="#059669",
+                                             command=self.process_payment)
         self.btn_confirm_pay.pack(fill="x", padx=20, pady=20)
 
     def format_cash_input(self, event):
@@ -750,8 +729,8 @@ class CashierWindow:
             preview_win.destroy()
 
         ctk.CTkButton(preview_win, text="🖨️ XUẤT RA MÁY IN NHIỆT", font=("Arial", 16, "bold"),
-                      height=55, fg_color="#10B981", hover_color="#059669",
-                      command=mock_print).pack(fill="x", padx=10, pady=(0, 10))
+                      height=55, fg_color="#10B981", hover_color="#059669", command=mock_print).pack(fill="x", padx=10,
+                                                                                                     pady=(0, 10))
 
         if getattr(self, 'reset_timer', None):
             self.root.after_cancel(self.reset_timer)

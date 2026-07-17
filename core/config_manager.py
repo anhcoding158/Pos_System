@@ -1,7 +1,6 @@
 import json
 import os
 
-
 class ConfigManager:
     def __init__(self, config_file="config.json"):
         self.config_file = config_file
@@ -34,6 +33,10 @@ class ConfigManager:
         except Exception as e:
             print(f"Lỗi đọc file cấu hình: {e}")
             return {}
+
+    def reload(self):
+        """Tải lại dữ liệu từ file để cập nhật thay đổi ngay lập tức (Vá lỗi QR)"""
+        self.config_data = self.load_config()
 
     def get(self, section, key):
         return self.config_data.get(section, {}).get(key, "")
